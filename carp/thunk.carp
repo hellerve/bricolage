@@ -1,0 +1,22 @@
+(deftype (Thunk a) [
+  evald Bool
+  f (Fn [] a)
+  res (Maybe a)
+])
+
+(defmodule Thunk
+  (defn force [a]
+    (if @(evald a)
+      (Maybe.unsafe-from @(res a))
+      (let-do [res (~(f a))]
+        (set-evald! a true)
+        (set-res! a (Maybe.Just res))
+        res)))
+)
+
+(defmacro lazy [form]
+  (list 'Thunk.init false (list 'fn (array) form) '(Maybe.Nothing)))
+
+(defn main []
+  (let-do [x (lazy (do (println* "inside lazy") 1))]
+    (println* &(Thunk.force &x))))
