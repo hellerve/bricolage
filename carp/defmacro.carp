@@ -13,8 +13,8 @@
 
 (defndynamic replacerfn [arg]
   (let [obs (Symbol.str arg)]
-    (if (= "!" (String.prefix-string obs 1))
-      [(gensym-with arg) (Symbol.from (String.suffix-string obs 1))]
+    (if (= "!" (String.prefix obs 1))
+      [(gensym-with arg) (Symbol.from (String.suffix obs 1))]
       [arg arg])))
 
 (defndynamic generate-let [replacer]
