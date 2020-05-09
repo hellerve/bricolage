@@ -1,15 +1,15 @@
 (defmacro reify [:rest fs]
-  (let [x (gensym)]
-    (do
-      (hoist
-        ('deftype gensym [])
-        (cons 'defmodule (cons x fs)))
-        (list (Symbol.prefix x 'init)))))
+  (let-do [x (gensym)]
+    (eval;-global
+      (list 'do
+        (list 'deftype x [])
+        (cons 'defmodule (cons x fs))))
+    (list (Symbol.prefix x 'init))))
 
 (defn x []
   (reify
-    (defn inc [] 1)
-    (defn dec [] 0)))
+    (defn inc [_] 1)
+    (defn dec [_] 0)))
 
 (defn main []
   (println* (inc (x))))
