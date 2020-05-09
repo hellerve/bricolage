@@ -1,0 +1,55 @@
+(defndynamic derive-special-internal2 [comb f ms]
+  (if (= (length ms) 0)
+    '(zero)
+    (if (= (length ms) 1)
+      (f (caar ms))
+      (list comb
+            (f (caar ms))
+            (derive-special-internal2 comb f (cdr ms))))))
+
+(defndynamic derive-special-internal [comb f a]
+  (derive-special-internal2 comb f (members a)))
+
+(defndynamic derive-eq-internal [m] (list '= (list m 'o1) (list m 'o2)))
+
+(defmacro derive-eq [t]
+  (eval
+    (list 'defmodule t
+      (list 'defn '= (array 'o1 'o2) (derive-special-internal 'and derive-eq-internal t)))))
+
+(defndynamic derive-zero-internal [m] '(zero))
+
+(defmacro derive-zero [t]
+  (eval
+    (list 'defmodule t
+      (list 'defn 'zero (array)
+        (list 'init (derive-special-internal 'cons derive-zero-internal t))))))
+
+(defndynamic derive-internal2 [f ms]
+  (if (= (length ms) 0)
+    '(init)
+    (if (= (length ms) 1)
+      (list (Symbol.concat ['update- (caar ms)]) 'o (list 'ref f))
+      (list (Symbol.concat ['update- (caar ms)])
+            (derive-internal2 f (cdr ms))
+            (list 'ref f)))))
+
+(defndynamic derive-internal [f a] (derive-internal2 f (members a)))
+
+(defmacro derive [t f]
+  (eval
+    (list 'defmodule t
+      (list 'defn f (array 'o)
+        (derive-internal f t)))))
+
+(deftype T [x Int y Int z Int])
+(derive T inc)
+(derive T dec)
+(derive-eq T)
+
+(defn main []
+  (do
+    (println* &(T.inc (T.init 1 2 3)))
+    (println* &(T.dec (T.init 1 2 3)))
+    (println* (= &(T.init 1 2 3) &(T.init 1 2 3)))
+    (println* (= &(T.init 1 2 3) &(T.init 1 3 2)))))
