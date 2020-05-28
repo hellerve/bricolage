@@ -1,16 +1,30 @@
 (deftype (LazySeq a) [
   value a
-  next- (Fn [&a] a)
+  next (Fn [&a] a)
+  stopped Bool
+  stop? (Fn [a] Bool)
 ])
 
+(deftype (SeqResult a)
+  (Value [(LazySeq a)])
+  (Stop [])
+)
+
 (defmodule LazySeq
+  (defn new [value next stop] (init value next false stop))
+
   (defn next-seq [s]
-    (let [n (~(next- s) (value s))]
-      (LazySeq.init n @(next- s))))
+    (if @(stopped s)
+      (SeqResult.Stop)
+      (let [n (~(next s) (value s))]
+        (SeqResult.Value
+          (LazySeq.init n @(next s) (~(stop? s) n) @(stop? s))))))
 )
 
 (defn main []
-  (let-do [counter (LazySeq.init 0 (fn [i] (Int.inc @i)))]
-    (while (< @(LazySeq.value &counter) 10)
-      (set! counter (LazySeq.next-seq &counter)))
+  (let-do [counter (LazySeq.new 0 (fn [i] (Int.inc @i)) (fn [i] (> i 10)))]
+    (while (not @(LazySeq.stopped &counter))
+      (match (LazySeq.next-seq &counter)
+        (SeqResult.Value v) (set! counter v)
+        (SeqResult.Stop) ()))
     (println* (LazySeq.value &counter))))
