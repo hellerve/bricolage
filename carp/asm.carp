@@ -1,0 +1,11 @@
+; needs hoist
+(defmacro asm [template outputs inputs clobbers]
+  (let [n (gensym)]
+    (hoist
+      `(deftemplate n (Fn [] ()) ""
+        %(String.concat
+          ["__asm__(\"" template "\""
+          " : " (String.join ", " (map String.concat outputs))
+          " : " (String.join ", " (map String.concat inputs))
+          " : " (String.join ", " (map String.concat clobbers))
+          ")"])))))
