@@ -1,32 +1,21 @@
-(defndynamic map-internal [f xs acc]
-  (if (= (length xs) 0)
-      acc
-      (map-internal f (cdr xs) (append acc [(f (car xs))]))))
-
-(defndynamic map [f x]
-  (map-internal f x []))
-
-(defndynamic flatten [a]
-  (if (= (length a) 0)
-    []
-    (append (car a) (flatten (cdr a)))))
-
 (defndynamic replacerfn [arg]
   (let [obs (Symbol.str arg)]
     (if (= "!" (String.prefix obs 1))
       [(gensym-with arg) (Symbol.from (String.suffix obs 1))]
       [arg arg])))
 
-(defndynamic generate-let [replacer]
-  [(list 'quote (car replacer)) (cadr replacer)])
+(defndynamic generate-let [acc replacer]
+  (append acc [(list 'quote (car replacer)) (cadr replacer)]))
 
-(defndynamic generate-reverse-let [replacer]
-  [(cadr replacer) (list 'quote (car replacer))])
+(defndynamic generate-reverse-let [acc replacer]
+  (append acc [(cadr replacer) (list 'quote (car replacer))]))
 
 (defmacro defmacro! [name args body]
-  (let [replacer (map replacerfn args)]
-    (let [args (map cadr replacer)]
-      (list 'defmacro name args
-        (list 'list '(quote let) (flatten (map generate-let replacer))
-          (list 'let (flatten (map generate-reverse-let replacer))
-            body))))))
+  (let [replacer (map replacerfn args)
+        args (collect-into (map cadr replacer) array)
+        replacer (filter (fn [x] (/= (car x) (cadr x))) replacer)]
+      (eval
+        `(defmacro %name %args
+          %(list 'list '(quote let) (reduce generate-let [] replacer)
+            (list 'let (reduce generate-reverse-let [] replacer)
+                body))))))
