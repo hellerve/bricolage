@@ -1,30 +1,57 @@
-(deftype (LazySeq a) [
+(deftype (Stream a) [
   value a
-  next (Fn [&a] a)
-  stopped Bool
-  stop? (Fn [a] Bool)
+  next- (Fn [&a] (Maybe a))
 ])
 
-(deftype (SeqResult a)
-  (Value [(LazySeq a)])
-  (Stop [])
-)
+(defmodule Stream
+  (defn new [value next] (init value next))
+  (defn infinite [value next] (init value (fn [x] (Maybe.Just (next x)))))
+  (defn from-zero [next] (init (zero) next))
+  (defn from-zero-infinite [next] (init (zero) (fn [x] (Maybe.Just (next x)))))
 
-(defmodule LazySeq
-  (defn new [value next stop] (init value next false stop))
+  (defn advance! [s]
+    (let [n (~(next- s) (value s))]
+      (Maybe.apply n &(fn [v] (do (set-value! s v) v)))))
 
-  (defn next-seq [s]
-    (if @(stopped s)
-      (SeqResult.Stop)
-      (let [n (~(next s) (value s))]
-        (SeqResult.Value
-          (LazySeq.init n @(next s) (~(stop? s) n) @(stop? s))))))
+  (defn take-at-most! [s n]
+    (let-do [l []
+             taken 0]
+      (while (< taken n)
+        (match (advance! s)
+          (Maybe.Nothing) (break)
+          (Maybe.Just v)
+            (do
+              (set! taken (inc taken))
+              (set! l (Array.push-back l v)))))
+      l))
+
+  (defn take [s n]
+    (let [l (take-at-most! &s n)]
+      (if (= (Array.length &l) n)
+        (Maybe.Just (Pair.init s l))
+        (Maybe.Nothing))))
+
+  (defn drop! [s n]
+    (let-do [taken 0]
+      (while (< taken n)
+        (match (advance! s)
+          (Maybe.Nothing) (break)
+          (Maybe.Just _) ()))
+      ()))
+
+  (defn drop [s n]
+    (let-do [res @&s]
+      (drop! &res n)
+      res))
+
+  (defn map [s f]
+    (init @(value s) (fn [v] (Maybe.apply (~(next- s) v) f))))
 )
 
 (defn main []
-  (let-do [counter (LazySeq.new 0 (fn [i] (Int.inc @i)) (fn [i] (> i 10)))]
-    (while (not @(LazySeq.stopped &counter))
-      (match (LazySeq.next-seq &counter)
-        (SeqResult.Value v) (set! counter v)
-        (SeqResult.Stop) ()))
-    (println* (LazySeq.value &counter))))
+  (let-do [nats (Stream.from-zero-infinite (fn [i] (Int.inc @i)))
+           decimal (Stream.take-at-most! &nats 10)
+           doubled (Stream.map &nats &(fn [x] (* x 2)))
+           next-ten (Stream.take-at-most! &doubled 10)]
+    (println* &decimal) ; => [1 2 3 4 5 6 7 8 9 10]
+    (println* &next-ten))) ; => [22 46 94 190 382 766 1534 3070 6142 12286]
