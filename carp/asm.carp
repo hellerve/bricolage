@@ -1,11 +1,10 @@
-; needs hoist
-(defmacro asm [template outputs inputs clobbers]
-  (let [n (gensym)]
-    (hoist
-      `(deftemplate n (Fn [] ()) ""
-        %(String.concat
-          ["__asm__(\"" template "\""
-          " : " (String.join ", " (map String.concat outputs))
-          " : " (String.join ", " (map String.concat inputs))
-          " : " (String.join ", " (map String.concat clobbers))
-          ")"])))))
+(defmodule Unsafe
+  (defmodule C
+    (defmacro asm [name :rest instructions]
+      (do
+        (eval `(Unsafe.C.define %(String.concat [(str name) "()"]) %(String.concat ["__asm__(\"" (String.concat (collect-into instructions array)) "\");"])))
+        (eval `(register %name (Fn [] ())))))))
+
+(Unsafe.C.asm foobar "mov $0x2000001, %rax\\nmov $0, %rdi\\nsyscall")
+
+(defn main [] (foobar))
