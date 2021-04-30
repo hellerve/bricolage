@@ -1,16 +1,15 @@
 (deftype (Stream a) [
   value a
-  next- (Fn [&a] (Maybe a))
+  next (Fn [&a] (Maybe a))
 ])
 
 (defmodule Stream
-  (defn new [value next] (init value next))
   (defn infinite [value next] (init value (fn [x] (Maybe.Just (next x)))))
   (defn from-zero [next] (init (zero) next))
   (defn from-zero-infinite [next] (init (zero) (fn [x] (Maybe.Just (next x)))))
 
   (defn advance! [s]
-    (let [n (~(next- s) (value s))]
+    (let [n (~(next s) (value s))]
       (Maybe.apply n &(fn [v] (do (set-value! s v) v)))))
 
   (defn take-at-most! [s n]
@@ -45,7 +44,7 @@
       res))
 
   (defn map [s f]
-    (init @(value s) (fn [v] (Maybe.apply (~(next- s) v) f))))
+    (init @(value s) (fn [v] (Maybe.apply (~(next s) v) f))))
 )
 
 (defn main []
