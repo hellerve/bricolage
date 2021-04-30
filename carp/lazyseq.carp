@@ -7,11 +7,16 @@
   (defn infinite [value next] (init value (fn [x] (Maybe.Just (next x)))))
   (defn from-zero [next] (init (zero) next))
   (defn from-zero-infinite [next] (init (zero) (fn [x] (Maybe.Just (next x)))))
-  (defn from-array [a] (init (zero) (fn [n] (Array.nth &a @n))))
+  (defn from-array [a]
+    (init
+      (Pair.init 0 (zero))
+      (fn [p]
+        (let [n @(Pair.a p)]
+          (Maybe.apply (Array.nth &a n) &(fn [v] (Pair.init (inc n) v)))))))
 
   (defn advance! [s]
     (let [n (~(next s) (value s))]
-      (Maybe.apply n &(fn [v] (do (set-value! s v) v)))))
+      (Maybe.apply n &(fn [v] (do (set-value! s @&v) v)))))
 
   (defn take-at-most! [s n]
     (let-do [l []
