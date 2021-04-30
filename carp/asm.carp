@@ -1,10 +1,24 @@
 (defmodule Unsafe
   (defmodule C
+    (defndynamic asmify [instruction]
+      (if (string? instruction)
+        (String.concat ["\"" instruction "\" "])
+        (str instruction)))
+
     (defmacro asm [name :rest instructions]
       (do
-        (eval `(Unsafe.C.define %(String.concat [(str name) "()"]) %(String.concat ["__asm__(\"" (String.concat (collect-into instructions array)) "\");"])))
+        (eval `(Unsafe.C.define %(String.concat [(str name) "()"])
+          %(String.concat [
+            "__asm__("
+            (String.concat (collect-into (Dynamic.map Unsafe.C.asmify instructions) array))
+            ");"])))
         (eval `(register %name (Fn [] ())))))))
 
-(Unsafe.C.asm foobar "mov $0x2000001, %rax\\nmov $0, %rdi\\nsyscall")
+(Unsafe.C.asm exit5 "mov $0x2000001, %rax\\n" "mov $5, %rdi\\n" "syscall")
+(Unsafe.C.asm addr "mov %1, %0\\n" "add $1, %0\\n" : "=r" (dst) : "r" (src))
 
-(defn main [] (foobar))
+(defn main []
+  (let-do [src 1 dst 0]
+    (addr)
+    (println* dst)
+    (exit5)))
