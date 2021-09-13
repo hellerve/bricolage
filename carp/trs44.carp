@@ -1,0 +1,44 @@
+(defmodule Cell
+  (deftype (CellContents a)
+    (Comp [(Fn [] a)])
+    (Val [a])
+  )
+  (hidden CellContents)
+  (deftype (Cell a) [
+    member (Cell.CellContents a)
+  ])
+  (hidden Cell)
+
+  (defmacro make [e]
+    `(Cell.Cell.init (Cell.CellContents.Comp (fn [] %e))))
+  (defn get [c]
+    (match-ref (member c)
+      (CellContents.Val a) @a
+      (CellContents.Comp f)
+        (let-do [r (~f)]
+          (set-member! c (CellContents.Val r))
+          r)))
+)
+
+(deftype (Cons a)
+  (Empty [])
+  (CPair [(Cell a) (Cell (Cons a))]) ; this is the crux: self-referential types :(
+)
+
+(defmodule Cons
+  (defn zero [] (Empty))
+  (defmacro conj [a b]
+    `(CPair (Cell.make %a) (Cell.make %b)))
+  (defn single [a]
+    (conj a (zero)))
+  (defn first [c]
+    (match-ref c
+      (Empty) (Maybe.Nothing)
+      (CPair h _)
+        (Maybe.Just (Cell.get h))))
+  (defn rest [c]
+    (match-ref c
+      (Empty) (Maybe.Nothing)
+      (CPair _ t)
+        (Maybe.Just (Cell.get t))))
+)
